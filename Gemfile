@@ -85,7 +85,7 @@ group :development do
 end
 
 group :test do
-  #gem 'minitest'
+  gem 'minitest'
   gem 'test-unit'
   gem "shoulda", "~> 3.3.2"
   gem "shoulda-matchers", "1.4.1"
