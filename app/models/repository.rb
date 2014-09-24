@@ -40,7 +40,7 @@ class Repository < ActiveRecord::Base
   validates_length_of :identifier, :maximum => IDENTIFIER_MAX_LENGTH, :allow_blank => true
   validates_presence_of :identifier, :unless => Proc.new { |r| r.is_default? || r.set_as_default? }
   validates_uniqueness_of :identifier, :scope => :project_id, :allow_blank => true
-  validates_exclusion_of :identifier, :in => %w(show entry raw changes annotate diff show stats graph)
+  validates_exclusion_of :identifier, :in => %w(browse show entry raw changes annotate diff statistics graph revisions revision)
   # donwcase letters, digits, dashes, underscores but not digits only
   validates_format_of :identifier, :with => /\A(?!\d+$)[a-z0-9\-_]*\z/, :allow_blank => true
   # Checks if the SCM is enabled when creating a repository
@@ -151,6 +151,12 @@ class Repository < ActiveRecord::Base
     else
       find_by_identifier(param)
     end
+  end
+
+  # TODO: should return an empty hash instead of nil to avoid many ||{}
+  def extra_info
+    h = read_attribute(:extra_info)
+    h.is_a?(Hash) ? h : nil
   end
 
   def merge_extra_info(arg)
@@ -397,6 +403,43 @@ class Repository < ActiveRecord::Base
 
   def set_as_default?
     new_record? && project && Repository.where(:project_id => project.id).empty?
+  end
+
+  # Returns a hash with statistics by author in the following form:
+  # {
+  #   "John Smith" => { :commits => 45, :changes => 324 },
+  #   "Bob" => { ... }
+  # }
+  #
+  # Notes:
+  # - this hash honnors the users mapping defined for the repository
+  def stats_by_author
+    commits = Changeset.where("repository_id = ?", id).select("committer, user_id, count(*) as count").group("committer, user_id")
+
+    #TODO: restore ordering ; this line probably never worked
+    #commits.to_a.sort! {|x, y| x.last <=> y.last}
+
+    changes = Change.joins(:changeset).where("#{Changeset.table_name}.repository_id = ?", id).select("committer, user_id, count(*) as count").group("committer, user_id")
+
+    user_ids = changesets.map(&:user_id).compact.uniq
+    authors_names = User.where(:id => user_ids).inject({}) do |memo, user|
+      memo[user.id] = user.to_s
+      memo
+    end
+
+    (commits + changes).inject({}) do |hash, element|
+      mapped_name = element.committer
+      if username = authors_names[element.user_id.to_i]
+        mapped_name = username
+      end
+      hash[mapped_name] ||= { :commits_count => 0, :changes_count => 0 }
+      if element.is_a?(Changeset)
+        hash[mapped_name][:commits_count] += element.count.to_i
+      else
+        hash[mapped_name][:changes_count] += element.count.to_i
+      end
+      hash
+    end
   end
 
   protected

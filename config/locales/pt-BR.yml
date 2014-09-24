@@ -161,7 +161,6 @@ pt-BR:
   general_csv_separator: ';'
   general_csv_decimal_separator: ','
   general_csv_encoding: ISO-8859-1
-  general_pdf_encoding: UTF-8
   general_first_day_of_week: '1'
 
   notice_account_updated: Conta atualizada com sucesso.
@@ -1129,3 +1128,10 @@ pt-BR:
     users
   setting_force_default_language_for_loggedin: Force default language for logged-in
     users
+  label_custom_field_select_type: Select the type of object to which the custom field
+    is to be attached
+  label_issue_assigned_to_updated: Assignee updated
+  label_check_for_updates: Check for updates
+  label_latest_compatible_version: Latest compatible version
+  label_unknown_plugin: Unknown plugin
+  label_radio_buttons: radio buttons

@@ -62,10 +62,14 @@ class IssuesController < ApplicationController
       case params[:format]
       when 'csv', 'pdf'
         @limit = Setting.issues_export_limit.to_i
+        if params[:columns] == 'all'
+          @query.column_names = @query.available_inline_columns.map(&:name)
+        end
       when 'atom'
         @limit = Setting.feeds_limit.to_i
       when 'xml', 'json'
         @offset, @limit = api_offset_and_limit
+        @query.column_names = %w(author)
       else
         @limit = per_page_option
       end

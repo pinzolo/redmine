@@ -114,7 +114,7 @@ class CustomField < ActiveRecord::Base
   end
 
   def possible_values
-    values = super()
+    values = read_attribute(:possible_values)
     if values.is_a?(Array)
       values.each do |value|
         value.force_encoding('UTF-8') if value.respond_to?(:force_encoding)
@@ -128,7 +128,8 @@ class CustomField < ActiveRecord::Base
   # Makes possible_values accept a multiline string
   def possible_values=(arg)
     if arg.is_a?(Array)
-      super(arg.compact.collect(&:strip).select {|v| !v.blank?})
+      values = arg.compact.collect(&:strip).select {|v| !v.blank?}
+      write_attribute(:possible_values, values)
     else
       self.possible_values = arg.to_s.split(/[\n\r]+/)
     end
@@ -241,9 +242,7 @@ class CustomField < ActiveRecord::Base
         errs << ::I18n.t('activerecord.errors.messages.blank')
       end
     end
-    if custom_value.value.present?
-      errs += format.validate_custom_value(custom_value)
-    end
+    errs += format.validate_custom_value(custom_value)
     errs
   end
 

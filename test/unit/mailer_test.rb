@@ -55,7 +55,7 @@ class MailerTest < ActiveSupport::TestCase
       # link to a referenced ticket
       assert_select 'a[href=?][title=?]',
                     'https://mydomain.foo/issues/1',
-                    'Can&#x27;t print recipes (New)',
+                    "#{ESCAPED_UCANT} print recipes (New)",
                     :text => '#1'
       # link to a changeset
       assert_select 'a[href=?][title=?]',
@@ -94,7 +94,7 @@ class MailerTest < ActiveSupport::TestCase
       # link to a referenced ticket
       assert_select 'a[href=?][title=?]',
                     'http://mydomain.foo/rdm/issues/1',
-                    'Can&#x27;t print recipes (New)',
+                    "#{ESCAPED_UCANT} print recipes (New)",
                     :text => '#1'
       # link to a changeset
       assert_select 'a[href=?][title=?]',
@@ -144,7 +144,7 @@ class MailerTest < ActiveSupport::TestCase
       # link to a referenced ticket
       assert_select 'a[href=?][title=?]',
                     'http://mydomain.foo/rdm/issues/1',
-                    'Can&#x27;t print recipes (New)',
+                    "#{ESCAPED_UCANT} print recipes (New)",
                     :text => '#1'
       # link to a changeset
       assert_select 'a[href=?][title=?]',
@@ -467,6 +467,17 @@ class MailerTest < ActiveSupport::TestCase
     end
   end
 
+  def test_news_added_should_notify_project_news_watchers
+    user1 = User.generate!
+    user2 = User.generate!
+    news = News.find(1)
+    news.project.enabled_module('news').add_watcher(user1)
+
+    Mailer.news_added(news).deliver
+    assert_include user1.mail, last_email.bcc
+    assert_not_include user2.mail, last_email.bcc
+  end
+
   def test_news_comment_added
     comment = Comment.find(2)
     valid_languages.each do |lang|
@@ -637,6 +648,12 @@ class MailerTest < ActiveSupport::TestCase
     assert ActionMailer::Base.deliveries.empty?
     # should restore perform_deliveries
     assert ActionMailer::Base.perform_deliveries
+  end
+
+  def test_token_for_should_strip_trailing_gt_from_address_with_full_name
+    with_settings :mail_from => "Redmine Mailer<no-reply@redmine.org>" do
+      assert_match /\Aredmine.issue-\d+\.\d+\.[0-9a-f]+@redmine.org\z/, Mailer.token_for(Issue.generate!)
+    end
   end
 
   def test_layout_should_include_the_emails_header

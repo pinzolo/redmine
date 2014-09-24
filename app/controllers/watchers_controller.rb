@@ -55,6 +55,9 @@ class WatchersController < ApplicationController
       user_ids = params[:watcher][:user_ids] || [params[:watcher][:user_id]]
       @users = User.active.where(:id => user_ids).all
     end
+    if @users.blank?
+      render :nothing => true
+    end
   end
 
   def destroy
@@ -90,7 +93,13 @@ class WatchersController < ApplicationController
     klass = Object.const_get(params[:object_type].camelcase) rescue nil
     if klass && klass.respond_to?('watched_by')
       @watchables = klass.where(:id => Array.wrap(params[:object_id])).all
-      raise Unauthorized if @watchables.any? {|w| w.respond_to?(:visible?) && !w.visible?}
+      raise Unauthorized if @watchables.any? {|w|
+        if w.respond_to?(:visible?)
+          !w.visible?
+        elsif w.respond_to?(:project) && w.project
+          !w.project.visible?
+        end
+      }
     end
     render_404 unless @watchables.present?
   end

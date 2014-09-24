@@ -40,8 +40,13 @@ module CustomFieldsHelper
      :label => DocumentCategory::OptionName}
   ]
 
-  def custom_fields_tabs
-    CUSTOM_FIELDS_TABS
+  def render_custom_fields_tabs(types)
+    tabs = CUSTOM_FIELDS_TABS.select {|h| types.include?(h[:name]) }
+    render_tabs tabs
+  end
+
+  def custom_field_type_options
+    CUSTOM_FIELDS_TABS.map {|h| [l(h[:label]), h[:name]]}
   end
 
   def render_custom_field_format_partial(form, custom_field)
@@ -133,7 +138,11 @@ module CustomFieldsHelper
     end unless custom_values.empty?
   end
 
-  def edit_tag_style_tag(form)
-    form.select :edit_tag_style, [[l(:label_drop_down_list), ''], [l(:label_checkboxes), 'check_box']], :label => :label_display
+  def edit_tag_style_tag(form, options={})
+    select_options = [[l(:label_drop_down_list), ''], [l(:label_checkboxes), 'check_box']]
+    if options[:include_radio]
+      select_options << [l(:label_radio_buttons), 'radio']
+    end
+    form.select :edit_tag_style, select_options, :label => :label_display
   end
 end

@@ -25,7 +25,8 @@ class ChangesetTest < ActiveSupport::TestCase
            :changesets, :changes,
            :enumerations,
            :custom_fields, :custom_values,
-           :users, :members, :member_roles, :trackers,
+           :users, :members, :member_roles,
+           :trackers, :projects_trackers,
            :enabled_modules, :roles
 
   def test_ref_keywords_any
@@ -534,6 +535,17 @@ class ChangesetTest < ActiveSupport::TestCase
       assert_equal "UTF-8", c.comments.encoding.to_s
       assert_equal "UTF-8", c.committer.encoding.to_s
     end
+  end
+
+  def test_comments_should_accept_more_than_64k
+    c = Changeset.new(:repository   => Repository.first,
+                      :committed_on => Time.now,
+                      :revision     => '123',
+                      :scmid        => '12345',
+                      :comments     => "a" * 500.kilobyte)
+    assert c.save
+    c.reload
+    assert_equal 500.kilobyte, c.comments.size
   end
 
   def test_identifier

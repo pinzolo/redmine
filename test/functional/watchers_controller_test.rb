@@ -56,6 +56,27 @@ class WatchersControllerTest < ActionController::TestCase
     assert Issue.find(3).watched_by?(User.find(3))
   end
 
+  def test_watch_a_news_module_should_add_watcher
+    @request.session[:user_id] = 7
+    assert_not_nil m = Project.find(1).enabled_module('news')
+
+    assert_difference 'Watcher.count' do
+      xhr :post, :watch, :object_type => 'enabled_module', :object_id => m.id.to_s
+      assert_response :success
+    end
+    assert m.reload.watched_by?(User.find(7))
+  end
+
+  def test_watch_a_private_news_module_without_permission_should_fail
+    @request.session[:user_id] = 7
+    assert_not_nil m = Project.find(2).enabled_module('news')
+
+    assert_no_difference 'Watcher.count' do
+      xhr :post, :watch, :object_type => 'enabled_module', :object_id => m.id.to_s
+      assert_response 403
+    end
+  end
+
   def test_watch_should_be_denied_without_permission
     Role.find(2).remove_permission! :view_issues
     @request.session[:user_id] = 3
@@ -214,6 +235,13 @@ class WatchersControllerTest < ActionController::TestCase
       assert_include 'watchers_inputs', response.body
       assert_include 'issue[watcher_user_ids][]', response.body
     end
+  end
+
+  def test_append_without_user_should_render_nothing
+    @request.session[:user_id] = 2
+    xhr :post, :append, :project_id => 'ecookbook'
+    assert_response :success
+    assert response.body.blank?
   end
 
   def test_remove_watcher

@@ -77,6 +77,16 @@ class TimeEntry < ActiveRecord::Base
     end
   end
 
+  def safe_attributes=(attrs, user=User.current)
+    attrs = super
+    if !new_record? && issue && issue.project_id != project_id
+      if user.allowed_to?(:log_time, issue.project)
+        self.project_id = issue.project_id
+      end
+    end
+    attrs
+  end
+
   def set_project_if_nil
     self.project = issue.project if issue && project.nil?
   end
@@ -115,5 +125,15 @@ class TimeEntry < ActiveRecord::Base
   # Returns true if the time entry can be edited by usr, otherwise false
   def editable_by?(usr)
     (usr == user && usr.allowed_to?(:edit_own_time_entries, project)) || usr.allowed_to?(:edit_time_entries, project)
+  end
+
+  # Returns the custom_field_values that can be edited by the given user
+  def editable_custom_field_values(user=nil)
+    visible_custom_field_values
+  end
+
+  # Returns the custom fields that can be edited by the given user
+  def editable_custom_fields(user=nil)
+    editable_custom_field_values(user).map(&:custom_field).uniq
   end
 end

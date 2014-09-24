@@ -26,7 +26,7 @@ class Project < ActiveRecord::Base
   # Maximum length for project identifiers
   IDENTIFIER_MAX_LENGTH = 100
 
-  # Specific overidden Activities
+  # Specific overridden Activities
   has_many :time_entry_activities
   has_many :members, :include => [:principal, :roles], :conditions => "#{Principal.table_name}.type='User' AND #{Principal.table_name}.status=#{Principal::STATUS_ACTIVE}"
   has_many :memberships, :class_name => 'Member'
@@ -74,7 +74,7 @@ class Project < ActiveRecord::Base
   validates_length_of :name, :maximum => 255
   validates_length_of :homepage, :maximum => 255
   validates_length_of :identifier, :in => 1..IDENTIFIER_MAX_LENGTH
-  # donwcase letters, digits, dashes but not digits only
+  # downcase letters, digits, dashes but not digits only
   validates_format_of :identifier, :with => /\A(?!\d+$)[a-z0-9\-_]*\z/, :if => Proc.new { |p| p.identifier_changed? }
   # reserved words
   validates_exclusion_of :identifier, :in => %w( new )
@@ -252,10 +252,10 @@ class Project < ActiveRecord::Base
       parent_activity = TimeEntryActivity.find(activity['parent_id'])
       activity['name'] = parent_activity.name
       activity['position'] = parent_activity.position
-      if Enumeration.overridding_change?(activity, parent_activity)
+      if Enumeration.overriding_change?(activity, parent_activity)
         project_activity = self.time_entry_activities.create(activity)
         if project_activity.new_record?
-          raise ActiveRecord::Rollback, "Overridding TimeEntryActivity was not successfully saved"
+          raise ActiveRecord::Rollback, "Overriding TimeEntryActivity was not successfully saved"
         else
           self.time_entries.
             where(["activity_id = ?", parent_activity.id]).
@@ -502,7 +502,7 @@ class Project < ActiveRecord::Base
     assignable.select {|m| m.roles.detect {|role| role.assignable?}}.collect {|m| m.principal}.sort
   end
 
-  # Returns the mail adresses of users that should be always notified on project events
+  # Returns the mail addresses of users that should be always notified on project events
   def recipients
     notified_users.collect {|user| user.mail}
   end
@@ -514,7 +514,7 @@ class Project < ActiveRecord::Base
   end
 
   # Returns a scope of all custom fields enabled for project issues
-  # (explictly associated custom fields and custom fields enabled for all projects)
+  # (explicitly associated custom fields and custom fields enabled for all projects)
   def all_issue_custom_fields
     @all_issue_custom_fields ||= IssueCustomField.
       sorted.
@@ -622,9 +622,16 @@ class Project < ActiveRecord::Base
     end
   end
 
-  def module_enabled?(module_name)
-    module_name = module_name.to_s
-    enabled_modules.detect {|m| m.name == module_name}
+  # Return the enabled module with the given name
+  # or nil if the module is not enabled for the project
+  def enabled_module(name)
+    name = name.to_s
+    enabled_modules.detect {|m| m.name == name}
+  end
+
+  # Return true if the module with the given name is enabled
+  def module_enabled?(name)
+    enabled_module(name).present?
   end
 
   def enabled_module_names=(module_names)
@@ -840,7 +847,7 @@ class Project < ActiveRecord::Base
   # Copies issues from +project+
   def copy_issues(project)
     # Stores the source issue id as a key and the copied issues as the
-    # value.  Used to map the two togeather for issue relations.
+    # value.  Used to map the two together for issue relations.
     issues_map = {}
 
     # Store status and reopen locked/closed versions
@@ -941,10 +948,11 @@ class Project < ActiveRecord::Base
   def copy_queries(project)
     project.queries.each do |query|
       new_query = IssueQuery.new
-      new_query.attributes = query.attributes.dup.except("id", "project_id", "sort_criteria")
+      new_query.attributes = query.attributes.dup.except("id", "project_id", "sort_criteria", "user_id", "type")
       new_query.sort_criteria = query.sort_criteria if query.sort_criteria
       new_query.project = self
       new_query.user_id = query.user_id
+      new_query.role_ids = query.role_ids if query.visibility == IssueQuery::VISIBILITY_ROLES
       self.queries << new_query
     end
   end
@@ -995,15 +1003,15 @@ class Project < ActiveRecord::Base
 
   # Returns the systemwide active activities merged with the project specific overrides
   def system_activities_and_project_overrides(include_inactive=false)
-    if include_inactive
-      return TimeEntryActivity.shared.
-        where("id NOT IN (?)", self.time_entry_activities.collect(&:parent_id)).all +
-        self.time_entry_activities
-    else
-      return TimeEntryActivity.shared.active.
-        where("id NOT IN (?)", self.time_entry_activities.collect(&:parent_id)).all +
-        self.time_entry_activities.active
+    t = TimeEntryActivity.table_name
+    scope = TimeEntryActivity.where(
+      "(#{t}.project_id IS NULL AND #{t}.id NOT IN (?)) OR (#{t}.project_id = ?)",
+      time_entry_activities.map(&:parent_id), id
+    )
+    unless include_inactive
+      scope = scope.active
     end
+    scope
   end
 
   # Archives subprojects recursively

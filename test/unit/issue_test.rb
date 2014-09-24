@@ -706,6 +706,16 @@ class IssueTest < ActiveSupport::TestCase
     assert values.detect {|value| value.custom_field == cf2}
   end
 
+  def test_editable_custom_fields_should_return_custom_field_that_is_enabled_for_the_role_only
+    enabled_cf = IssueCustomField.generate!(:is_for_all => true, :tracker_ids => [1], :visible => false, :role_ids => [1,2])
+    disabled_cf = IssueCustomField.generate!(:is_for_all => true, :tracker_ids => [1], :visible => false, :role_ids => [2])
+    user = User.find(2)
+    issue = Issue.new(:project_id => 1, :tracker_id => 1)
+
+    assert_include enabled_cf, issue.editable_custom_fields(user)
+    assert_not_include disabled_cf, issue.editable_custom_fields(user)
+  end
+
   def test_safe_attributes_should_accept_target_tracker_writable_fields
     WorkflowPermission.delete_all
     WorkflowPermission.create!(:old_status_id => 1, :tracker_id => 1,
@@ -2254,16 +2264,19 @@ class IssueTest < ActiveSupport::TestCase
     assert_include 'priority-highest', classes
   end
 
-  def test_css_classes_should_include_user_assignment
-    issue = Issue.generate(:assigned_to_id => 2)
-    assert_include 'assigned-to-me', issue.css_classes(User.find(2))
-    assert_not_include 'assigned-to-me', issue.css_classes(User.find(3))
-  end
-
-  def test_css_classes_should_include_user_group_assignment
-    issue = Issue.generate(:assigned_to_id => 10)
-    assert_include 'assigned-to-my-group', issue.css_classes(Group.find(10).users.first)
-    assert_not_include 'assigned-to-my-group', issue.css_classes(User.find(3))
+  def test_css_classes_should_include_user_and_group_assignment
+    project = Project.first
+    user = User.generate!
+    group = Group.generate!
+    Member.create!(:principal => group, :project => project, :role_ids => [1, 2])
+    group.users << user
+    assert user.member_of?(project)
+    issue1 = Issue.generate(:assigned_to_id => group.id)
+    assert_include 'assigned-to-my-group', issue1.css_classes(user)
+    assert_not_include 'assigned-to-me', issue1.css_classes(user)
+    issue2 = Issue.generate(:assigned_to_id => user.id)
+    assert_not_include 'assigned-to-my-group', issue2.css_classes(user)
+    assert_include 'assigned-to-me', issue2.css_classes(user)
   end
 
   def test_save_attachments_with_hash_should_save_attachments_in_keys_order

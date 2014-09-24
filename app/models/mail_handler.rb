@@ -46,6 +46,14 @@ class MailHandler < ActionMailer::Base
     super(email)
   end
 
+  # Receives an email and rescues any exception
+  def self.safe_receive(*args)
+    receive(*args)
+  rescue => e
+    logger.error "An unexpected error occurred when receiving email: #{e.message}" if logger
+    return false
+  end
+
   # Extracts MailHandler options from environment variables
   # Use when receiving emails with rake tasks
   def self.extract_options_from_env(env)
@@ -66,7 +74,7 @@ class MailHandler < ActionMailer::Base
   cattr_accessor :ignored_emails_headers
   @@ignored_emails_headers = {
     'X-Auto-Response-Suppress' => 'oof',
-    'Auto-Submitted' => /^auto-/
+    'Auto-Submitted' => /\Aauto-(replied|generated)/
   }
 
   # Processes incoming emails
@@ -190,6 +198,7 @@ class MailHandler < ActionMailer::Base
       issue.subject = '(no subject)'
     end
     issue.description = cleaned_up_text_body
+    issue.start_date ||= Date.today if Setting.default_issue_start_date_to_creation_date?
 
     # add To and Cc as watchers before saving so the watchers can reply to Redmine
     add_watchers(issue)
@@ -310,7 +319,7 @@ class MailHandler < ActionMailer::Base
     else
       @keywords[attr] = begin
         if (options[:override] || @@handler_options[:allow_override].include?(attr.to_s)) &&
-              (v = extract_keyword!(plain_text_body, attr, options[:format]))
+              (v = extract_keyword!(cleaned_up_text_body, attr, options[:format]))
           v
         elsif !@@handler_options[:issue][attr].blank?
           @@handler_options[:issue][attr]
@@ -338,7 +347,7 @@ class MailHandler < ActionMailer::Base
     regexp = /^(#{keys.join('|')})[ \t]*:[ \t]*(#{format})\s*$/i
     if m = text.match(regexp)
       keyword = m[2].strip
-      text.gsub!(regexp, '')
+      text.sub!(regexp, '')
     end
     keyword
   end
@@ -427,7 +436,7 @@ class MailHandler < ActionMailer::Base
   end
 
   def cleaned_up_text_body
-    cleanup_body(plain_text_body)
+    @cleaned_up_text_body ||= cleanup_body(plain_text_body)
   end
 
   def cleaned_up_subject

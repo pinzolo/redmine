@@ -18,7 +18,7 @@
 require File.expand_path('../../test_helper', __FILE__)
 
 class CustomFieldTest < ActiveSupport::TestCase
-  fixtures :custom_fields
+  fixtures :custom_fields, :roles, :projects, :issues
 
   def test_create
     field = UserCustomField.new(:name => 'Money money money', :field_format => 'float')
@@ -146,6 +146,7 @@ class CustomFieldTest < ActiveSupport::TestCase
 
     assert f.valid_field_value?(nil)
     assert f.valid_field_value?('')
+    assert !f.valid_field_value?(' ')
     assert f.valid_field_value?('a' * 2)
     assert !f.valid_field_value?('a')
     assert !f.valid_field_value?('a' * 6)
@@ -156,6 +157,7 @@ class CustomFieldTest < ActiveSupport::TestCase
 
     assert f.valid_field_value?(nil)
     assert f.valid_field_value?('')
+    assert !f.valid_field_value?(' ')
     assert f.valid_field_value?('ABC')
     assert !f.valid_field_value?('abc')
   end
@@ -165,6 +167,7 @@ class CustomFieldTest < ActiveSupport::TestCase
 
     assert f.valid_field_value?(nil)
     assert f.valid_field_value?('')
+    assert !f.valid_field_value?(' ')
     assert f.valid_field_value?('1975-07-14')
     assert !f.valid_field_value?('1975-07-33')
     assert !f.valid_field_value?('abc')
@@ -175,6 +178,7 @@ class CustomFieldTest < ActiveSupport::TestCase
 
     assert f.valid_field_value?(nil)
     assert f.valid_field_value?('')
+    assert !f.valid_field_value?(' ')
     assert f.valid_field_value?('value2')
     assert !f.valid_field_value?('abc')
   end
@@ -184,6 +188,7 @@ class CustomFieldTest < ActiveSupport::TestCase
 
     assert f.valid_field_value?(nil)
     assert f.valid_field_value?('')
+    assert !f.valid_field_value?(' ')
     assert f.valid_field_value?('123')
     assert f.valid_field_value?('+123')
     assert f.valid_field_value?('-123')
@@ -195,6 +200,7 @@ class CustomFieldTest < ActiveSupport::TestCase
 
     assert f.valid_field_value?(nil)
     assert f.valid_field_value?('')
+    assert !f.valid_field_value?(' ')
     assert f.valid_field_value?('11.2')
     assert f.valid_field_value?('-6.250')
     assert f.valid_field_value?('5')
@@ -206,9 +212,11 @@ class CustomFieldTest < ActiveSupport::TestCase
 
     assert f.valid_field_value?(nil)
     assert f.valid_field_value?('')
+    assert !f.valid_field_value?(' ')
     assert f.valid_field_value?([])
     assert f.valid_field_value?([nil])
     assert f.valid_field_value?([''])
+    assert !f.valid_field_value?([' '])
 
     assert f.valid_field_value?('value2')
     assert !f.valid_field_value?('abc')

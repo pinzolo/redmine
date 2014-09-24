@@ -386,7 +386,6 @@ az:
   general_csv_separator: ';'
   general_first_day_of_week: '1'
   general_lang_name: 'Azerbaijanian (Azeri)'
-  general_pdf_encoding: UTF-8
   general_text_no: 'xeyr'
   general_text_No: 'Xeyr'
   general_text_yes: 'bəli'
@@ -1207,3 +1206,10 @@ az:
     users
   setting_force_default_language_for_loggedin: Force default language for logged-in
     users
+  label_custom_field_select_type: Select the type of object to which the custom field
+    is to be attached
+  label_issue_assigned_to_updated: Assignee updated
+  label_check_for_updates: Check for updates
+  label_latest_compatible_version: Latest compatible version
+  label_unknown_plugin: Unknown plugin
+  label_radio_buttons: radio buttons

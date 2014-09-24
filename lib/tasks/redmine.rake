@@ -60,9 +60,19 @@ WARNING: All data in the development database is deleted.
 DESC
 
   task :migrate_dbms => :environment do
-    ActiveRecord::Base.establish_connection :production
+    ActiveRecord::Base.establish_connection :development
+    target_tables = ActiveRecord::Base.connection.tables
+    ActiveRecord::Base.remove_connection
 
-    (ActiveRecord::Base.connection.tables - %w(schema_migrations plugin_schema_info)).each do |table_name|
+    ActiveRecord::Base.establish_connection :production
+    tables = ActiveRecord::Base.connection.tables.sort - %w(schema_migrations plugin_schema_info)
+
+    if (tables - target_tables).any?
+      list = (tables - target_tables).map {|table| "* #{table}"}.join("\n")
+      abort "The following table(s) are missing from the target database:\n#{list}"
+    end
+
+    tables.each do |table_name|
       Source = Class.new(ActiveRecord::Base)
       Target = Class.new(ActiveRecord::Base)
       Target.establish_connection(:development)

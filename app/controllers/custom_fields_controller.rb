@@ -27,7 +27,6 @@ class CustomFieldsController < ApplicationController
     respond_to do |format|
       format.html {
         @custom_fields_by_type = CustomField.all.group_by {|f| f.class.name }
-        @tab = params[:tab] || 'IssueCustomField'
       }
       format.api {
         @custom_fields = CustomField.all
@@ -77,7 +76,7 @@ class CustomFieldsController < ApplicationController
   def build_new_custom_field
     @custom_field = CustomField.new_subclass_instance(params[:type], params[:custom_field])
     if @custom_field.nil?
-      render_404
+      render :action => 'select_type'
     end
   end
 
