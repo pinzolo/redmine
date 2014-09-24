@@ -85,6 +85,7 @@ group :development do
 end
 
 group :test do
+  gem 'minitest'
   gem "shoulda", "~> 3.3.2"
   gem "shoulda-matchers", "1.4.1"
   gem "mocha", "~> 1.0.0", :require => 'mocha/api'
